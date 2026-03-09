@@ -1,0 +1,80 @@
+@page "/login"
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Login – APPWeb</PageTitle>
+
+@if (AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/");
+    return;
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Iniciar Sesión</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="model" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">Usuario</label>
+                            <InputText class="form-control" @bind-Value="model.Username" placeholder="admin" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <InputText class="form-control" type="password" @bind-Value="model.Password" />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
+                            @(isLoading ? "Ingresando..." : "Ingresar")
+                        </button>
+                    </EditForm>
+                    <hr />
+                    <div class="text-center small">
+                        No tienes cuenta? <a href="/register">Registrarse</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginFormModel model = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        var token = await AuthService.LoginAsync(model.Username, model.Password);
+        if (token is null)
+        {
+            errorMessage = "Credenciales inválidas. Verifica usuario y contraseña.";
+        }
+        else
+        {
+            // Invitados see the home page with the access notice
+            Nav.NavigateTo(AuthService.IsInvitado ? "/" : "/products");
+        }
+
+        isLoading = false;
+    }
+
+    private class LoginFormModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

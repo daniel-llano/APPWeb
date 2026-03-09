@@ -1,0 +1,140 @@
+@page "/products/edit/{Id:guid}"
+@inject IProductService ProductService
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Editar Producto – APPWeb</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+@if (!AuthService.IsAdmin)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning">
+            Necesitas una cuenta con rol <strong>Admin</strong> para editar productos.
+            <a href="/login" class="alert-link ms-1">Volver al login</a>
+        </div>
+    </div>
+    return;
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Editar Producto</h5>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center my-3">
+                            <div class="spinner-border text-warning" role="status"></div>
+                        </div>
+                    }
+                    else if (product is null)
+                    {
+                        <div class="alert alert-danger">Producto no encontrado.</div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+                        <EditForm Model="product" OnValidSubmit="HandleSubmit">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
+
+                            <div class="mb-3">
+                                <label class="form-label">Nombre *</label>
+                                <InputText class="form-control" @bind-Value="product.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descripción *</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="product.Description" />
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Precio *</label>
+                                    <InputNumber class="form-control" @bind-Value="product.Price" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Stock *</label>
+                                    <InputNumber class="form-control" @bind-Value="product.Stock" />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Categoría *</label>
+                                <InputSelect class="form-select" @bind-Value="product.Category">
+                                    <option value="">-- Seleccionar --</option>
+                                    <option>Electrónica</option>
+                                    <option>Ropa</option>
+                                    <option>Alimentos</option>
+                                    <option>Hogar</option>
+                                    <option>Deportes</option>
+                                    <option>Otros</option>
+                                </InputSelect>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning" disabled="@isSaving">
+                                    @(isSaving ? "Guardando..." : "Actualizar")
+                                </button>
+                                <a href="/products" class="btn btn-outline-secondary">Cancelar</a>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Product? product;
+    private bool isLoading = true;
+    private bool isSaving;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            product = await ProductService.GetByIdAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (product is null) return;
+        isSaving = true;
+        errorMessage = string.Empty;
+        try
+        {
+            await ProductService.UpdateAsync(product);
+            Nav.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al actualizar: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
