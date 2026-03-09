@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/APPWeb.Application/APPWeb.Application.csproj" />
+    <Project Path="src/APPWeb.Domain/APPWeb.Domain.csproj" />
+    <Project Path="src/APPWeb.Infrastructure/APPWeb.Infrastructure.csproj" />
+    <Project Path="src/APPWeb.Web/APPWeb.Web.csproj" />
+  </Folder>
+</Solution>
