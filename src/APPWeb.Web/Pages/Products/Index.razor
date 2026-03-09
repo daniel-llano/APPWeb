@@ -1,0 +1,143 @@
+@page "/products"
+@inject IProductService ProductService
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Productos – APPWeb</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Catálogo de Productos</h2>
+        @if (AuthService.IsAdmin)
+        {
+            <a href="/products/create" class="btn btn-success">+ Nuevo Producto</a>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else if (products.Count == 0)
+    {
+        <div class="alert alert-info">No hay productos registrados. <a href="/products/create">Crea el primero.</a></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Creado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in products)
+                    {
+                        <tr>
+                            <td>@p.Name</td>
+                            <td><span class="badge bg-secondary">@p.Category</span></td>
+                            <td>@p.Price.ToString("C")</td>
+                            <td>@p.Stock</td>
+                            <td>@p.CreatedAt.ToShortDateString()</td>
+                            <td class="text-center">
+                                <a href="/products/@p.Id" class="btn btn-sm btn-outline-info me-1">Ver</a>
+                                @if (AuthService.IsAdmin)
+                                {
+                                    <a href="/products/edit/@p.Id" class="btn btn-sm btn-outline-warning me-1">Editar</a>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Eliminar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (productToDelete is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar eliminación</h5>
+                </div>
+                <div class="modal-body">
+                    ¿Eliminar el producto <strong>@productToDelete.Name</strong>?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelDelete">Cancelar</button>
+                    <button class="btn btn-danger" @onclick="DeleteConfirmed">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Product> products = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private Product? productToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await ProductService.GetAllAsync();
+            products = result.ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar productos: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ConfirmDelete(Product p) => productToDelete = p;
+    private void CancelDelete() => productToDelete = null;
+
+    private async Task DeleteConfirmed()
+    {
+        if (productToDelete is null) return;
+        try
+        {
+            await ProductService.DeleteAsync(productToDelete.Id);
+            productToDelete = null;
+            await LoadProducts();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al eliminar: {ex.Message}";
+            productToDelete = null;
+        }
+    }
+}

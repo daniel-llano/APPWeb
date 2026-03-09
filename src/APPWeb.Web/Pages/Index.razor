@@ -1,0 +1,61 @@
+﻿@page "/"
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Inicio - APPWeb</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="display-5">Bienvenido a APPWeb</h1>
+    <p class="lead">Aplicacion web Blazor Server con Arquitectura Hexagonal y MediatR.</p>
+
+    @if (!AuthService.IsAuthenticated)
+    {
+        <div class="alert alert-info d-flex align-items-center gap-3">
+            <span>Por favor inicia sesion para gestionar productos.</span>
+            <a href="/login" class="btn btn-primary btn-sm">Iniciar sesion</a>
+            <a href="/register" class="btn btn-outline-secondary btn-sm">Registrarse</a>
+        </div>
+    }
+    else if (AuthService.IsInvitado)
+    {
+        <div class="alert alert-warning">
+            <strong>Cuenta sin acceso.</strong> Tu cuenta (@AuthService.Username) tiene rol <strong>Invitado</strong>.
+            Contacta a un administrador para que cambie tu rol y puedas acceder al sistema.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">
+            Sesion activa como <strong>@AuthService.Username</strong> (@AuthService.Role).
+            <a href="/products" class="fw-bold ms-2">Ver productos</a>
+        </div>
+    }
+
+    <hr />
+    <div class="row g-4 mt-2">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Arquitectura Hexagonal</h5>
+                    <p class="card-text">Domain, Application, Infrastructure, Presentation con puertos y adaptadores.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">MediatR + CQRS</h5>
+                    <p class="card-text">Comandos y Queries separados mediante el patron Mediator.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">JWT Authentication</h5>
+                    <p class="card-text">Autenticacion segura contra la WBAPI con tokens Bearer.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

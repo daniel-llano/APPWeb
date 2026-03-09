@@ -1,0 +1,212 @@
+@page "/users"
+@inject IUserApiClient UserApiClient
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Gestión de Usuarios – APPWeb</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+@if (!AuthService.IsAdmin)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning">
+            Solo los administradores pueden gestionar usuarios.
+            <a href="/" class="alert-link ms-1">Volver al inicio</a>
+        </div>
+    </div>
+    return;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Gestión de Usuarios</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show">
+            @statusMessage
+            <button type="button" class="btn-close" @onclick="() => statusMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (users.Count == 0)
+    {
+        <div class="alert alert-info">No hay usuarios registrados.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol actual</th>
+                        <th>Registrado</th>
+                        <th class="text-center">Cambiar rol</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in users)
+                    {
+                        <tr>
+                            <td>@u.Username</td>
+                            <td>
+                                <span class="badge @RoleBadge(u.Role)">@u.Role</span>
+                            </td>
+                            <td>@u.CreatedAt.ToShortDateString()</td>
+                            <td class="text-center" style="min-width:200px">
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select form-select-sm" @bind="pendingRoles[u.Id]">
+                                        <option value="Admin">Admin</option>
+                                        <option value="User">User</option>
+                                        <option value="Invitado">Invitado</option>
+                                    </select>
+                                    <button class="btn btn-outline-primary btn-sm"
+                                            @onclick="() => ChangeRole(u.Id)"
+                                            disabled="@IsSaving(u.Id)">
+                                        Guardar
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                @if (u.Username != AuthService.Username)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => ConfirmDelete(u)">
+                                        Eliminar
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">tu cuenta</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (userToDelete is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmar eliminación</h5>
+                </div>
+                <div class="modal-body">
+                    ¿Eliminar el usuario <strong>@userToDelete.Username</strong>? Esta acción no se puede deshacer.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => userToDelete = null">Cancelar</button>
+                    <button class="btn btn-danger" @onclick="DeleteUser" disabled="@isSavingDelete">
+                        @(isSavingDelete ? "Eliminando..." : "Eliminar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UserDto> users = [];
+    private Dictionary<Guid, string> pendingRoles   = [];
+    private HashSet<Guid>            savingRoles     = [];
+    private UserDto? userToDelete;
+    private bool isLoading     = true;
+    private bool isSavingDelete;
+    private string statusMessage = string.Empty;
+    private bool isError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        try
+        {
+            users        = (await UserApiClient.GetAllAsync()).ToList();
+            pendingRoles = users.ToDictionary(u => u.Id, u => u.Role);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error al cargar usuarios: {ex.Message}", error: true);
+        }
+        finally { isLoading = false; }
+    }
+
+    private async Task ChangeRole(Guid userId)
+    {
+        savingRoles.Add(userId);
+        statusMessage = string.Empty;
+        try
+        {
+            var updated = await UserApiClient.ChangeRoleAsync(userId, pendingRoles[userId]);
+            var user = users.First(u => u.Id == userId);
+            users[users.IndexOf(user)] = updated;
+            pendingRoles[userId] = updated.Role;
+            SetStatus($"Rol de '{updated.Username}' actualizado a '{updated.Role}'.", error: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error al cambiar rol: {ex.Message}", error: true);
+        }
+        finally { savingRoles.Remove(userId); }
+    }
+
+    private void ConfirmDelete(UserDto user) => userToDelete = user;
+
+    private async Task DeleteUser()
+    {
+        if (userToDelete is null) return;
+        isSavingDelete = true;
+        try
+        {
+            await UserApiClient.DeleteAsync(userToDelete.Id);
+            users.Remove(userToDelete);
+            pendingRoles.Remove(userToDelete.Id);
+            SetStatus($"Usuario '{userToDelete.Username}' eliminado.", error: false);
+            userToDelete = null;
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error al eliminar: {ex.Message}", error: true);
+        }
+        finally { isSavingDelete = false; }
+    }
+
+    private bool IsSaving(Guid id) => savingRoles.Contains(id);
+
+    private static string RoleBadge(string role) => role switch
+    {
+        "Admin"    => "bg-danger",
+        "User"     => "bg-primary",
+        "Invitado" => "bg-secondary",
+        _          => "bg-secondary"
+    };
+
+    private void SetStatus(string msg, bool error)
+    {
+        statusMessage = msg;
+        isError       = error;
+    }
+}

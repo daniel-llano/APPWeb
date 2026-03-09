@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\APPWeb.Application\APPWeb.Application.csproj" />
+    <ProjectReference Include="..\APPWeb.Infrastructure\APPWeb.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
