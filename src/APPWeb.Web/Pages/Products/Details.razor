@@ -1,0 +1,71 @@
+@page "/products/{Id:guid}"
+@inject IProductService ProductService
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Detalle Producto – APPWeb</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/login");
+    return;
+}
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (product is null)
+    {
+        <div class="alert alert-danger">Producto no encontrado.</div>
+    }
+    else
+    {
+        <div class="card shadow" style="max-width:600px">
+            <div class="card-header bg-info text-white d-flex justify-content-between">
+                <h5 class="mb-0">@product.Name</h5>
+                <span class="badge bg-light text-dark">@product.Category</span>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">@product.Description</p>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Precio</span><strong>@product.Price.ToString("C")</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Stock</span><strong>@product.Stock unidades</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Creado</span><span>@product.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    </li>
+                    @if (product.UpdatedAt.HasValue)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Actualizado</span><span>@product.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <a href="/products/edit/@product.Id" class="btn btn-warning btn-sm">Editar</a>
+                <a href="/products" class="btn btn-outline-secondary btn-sm">Volver</a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Product? product;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await ProductService.GetByIdAsync(Id);
+        isLoading = false;
+    }
+}

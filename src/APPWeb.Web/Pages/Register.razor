@@ -1,0 +1,98 @@
+@page "/register"
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+
+<PageTitle>Registrarse – APPWeb</PageTitle>
+
+@if (AuthService.IsAuthenticated)
+{
+    Nav.NavigateTo("/");
+    return;
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Crear cuenta</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="model" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">Usuario</label>
+                            <InputText class="form-control" @bind-Value="model.Username" placeholder="nombre de usuario" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <InputText class="form-control" type="password" @bind-Value="model.Password" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar contraseña</label>
+                            <InputText class="form-control" type="password" @bind-Value="model.ConfirmPassword" />
+                            @if (!string.IsNullOrEmpty(confirmError))
+                            {
+                                <div class="text-danger small mt-1">@confirmError</div>
+                            }
+                        </div>
+
+                        <div class="alert alert-info small">
+                            La cuenta se crea con rol <strong>Invitado</strong>. Un administrador puede cambiar
+                            tu rol desde la seccion de Usuarios para darte acceso completo.
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary w-100" disabled="@isLoading">
+                            @(isLoading ? "Registrando..." : "Registrarse")
+                        </button>
+                    </EditForm>
+                    <hr />
+                    <div class="text-center small">
+                        Ya tienes cuenta? <a href="/login">Inicia sesion</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterFormModel model = new();
+    private string errorMessage  = string.Empty;
+    private string confirmError  = string.Empty;
+    private bool isLoading;
+
+    private async Task HandleRegister()
+    {
+        confirmError  = string.Empty;
+        errorMessage  = string.Empty;
+
+        if (model.Password != model.ConfirmPassword)
+        {
+            confirmError = "Las contraseñas no coinciden.";
+            return;
+        }
+
+        isLoading = true;
+        var token = await AuthService.RegisterAsync(model.Username, model.Password);
+        if (token is null)
+            errorMessage = "No se pudo registrar el usuario. El nombre de usuario puede estar en uso.";
+        else
+            Nav.NavigateTo("/");   // Invitado lands on home with the access notice
+
+        isLoading = false;
+    }
+
+    private class RegisterFormModel
+    {
+        public string Username        { get; set; } = string.Empty;
+        public string Password        { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}
